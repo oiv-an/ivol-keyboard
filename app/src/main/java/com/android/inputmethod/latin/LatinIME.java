@@ -1692,6 +1692,17 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return;
         }
 
+        // IVOL: no next-word predictions ("Привет"...) in an empty field — words appear
+        // only once the user starts typing.
+        if (suggestedWords.isPrediction() && !suggestedWords.isEmpty()) {
+            final CharSequence before = mInputLogic.mConnection.getTextBeforeCursor(64, 0);
+            if (before == null || before.toString().trim().isEmpty()) {
+                mSuggestionStripView.setSuggestions(SuggestedWords.getEmptyInstance(),
+                        mRichImm.getCurrentSubtype().isRtlSubtype());
+                return;
+            }
+        }
+
         final boolean isEmptyApplicationSpecifiedCompletions =
                 currentSettingsValues.isApplicationSpecifiedCompletionsOn()
                 && suggestedWords.isEmpty();
