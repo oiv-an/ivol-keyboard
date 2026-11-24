@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IVOL: long-press (more keys) panel background -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/ivol_dark_popup_bg" />
+    <corners android:radius="8dp" />
+    <padding android:left="4dp" android:top="4dp" android:right="4dp" android:bottom="4dp" />
+</shape>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback for API < 26 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="oval"><solid android:color="@color/ivol_dark_keyboard_bg" /></shape></item>
+    <item android:drawable="@drawable/ivol_launcher_fg" />
+</layer-list>

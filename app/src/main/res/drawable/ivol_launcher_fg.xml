@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IVOL Keyboard launcher foreground: keyboard with light-blue key + letter I -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#242B30"
+        android:pathData="M30,38h48a6,6 0,0 1,6 6v22a6,6 0,0 1,-6 6h-48a6,6 0,0 1,-6 -6v-22a6,6 0,0 1,6 -6z"/>
+    <path android:fillColor="#DCE3E9" android:pathData="M33,45h6v5h-6z M43,45h6v5h-6z M53,45h6v5h-6z M63,45h6v5h-6z M73,45h4v5h-4z"/>
+    <path android:fillColor="#DCE3E9" android:pathData="M36,54h6v5h-6z M46,54h6v5h-6z M56,54h6v5h-6z M66,54h8v5h-8z"/>
+    <path android:fillColor="#C1E8FF" android:pathData="M40,63h28v4h-28z"/>
+</vector>

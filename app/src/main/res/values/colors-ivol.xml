@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IVOL Keyboard palette, measured from Yandex Keyboard dark theme. -->
+<resources>
+    <color name="ivol_dark_keyboard_bg">#161C20</color>
+    <color name="ivol_dark_key">#242B30</color>
+    <color name="ivol_dark_key_pressed">#3A4247</color>
+    <color name="ivol_dark_key_functional">#40484D</color>
+    <color name="ivol_dark_key_functional_pressed">#566066</color>
+    <color name="ivol_dark_key_shadow">#0D1113</color>
+    <color name="ivol_dark_key_action">#C1E8FF</color>
+    <color name="ivol_dark_key_action_pressed">#9CCDEB</color>
+    <color name="ivol_dark_key_text">#DCE3E9</color>
+    <color name="ivol_dark_key_hint">#B7BFC4</color>
+    <color name="ivol_dark_popup_bg">#2C3439</color>
+    <color name="ivol_dark_popup_selected">#4E5A62</color>
+    <color name="ivol_dark_preview_bg">#40484D</color>
+</resources>

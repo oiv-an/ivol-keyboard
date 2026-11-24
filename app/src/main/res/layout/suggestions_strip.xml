@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+/*
+**
+** Copyright 2011, The Android Open Source Project
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+-->
+<!-- IVOL: Yandex-like top bar.
+     Idle:   [logo] [AI] [clipboard] [translate] [settings] [emoji]
+     Typing: [logo] [ word | word | word ]                   [emoji] -->
+<merge
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <ImageButton
+        android:id="@+id/ivol_tb_logo"
+        android:layout_width="@dimen/ivol_toolbar_button_width"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
+        android:background="@drawable/ivol_toolbar_button_bg"
+        android:scaleType="center"
+        android:src="@drawable/ivol_ic_logo"
+        android:contentDescription="IVOL"
+        android:hapticFeedbackEnabled="false"
+        android:soundEffectsEnabled="false" />
+    <ImageButton
+        android:id="@+id/ivol_tb_emoji"
+        android:layout_width="@dimen/ivol_toolbar_button_width"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:background="@drawable/ivol_toolbar_button_bg"
+        android:scaleType="center"
+        android:src="@drawable/ivol_ic_emoji"
+        android:contentDescription="Emoji"
+        android:hapticFeedbackEnabled="false"
+        android:soundEffectsEnabled="false" />
+    <LinearLayout
+        android:id="@+id/ivol_tb_middle"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toEndOf="@id/ivol_tb_logo"
+        android:layout_toRightOf="@id/ivol_tb_logo"
+        android:layout_toStartOf="@id/ivol_tb_emoji"
+        android:layout_toLeftOf="@id/ivol_tb_emoji">
+        <ImageButton
+            android:id="@+id/ivol_tb_ai"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_ai"
+            android:contentDescription="AI"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <ImageButton
+            android:id="@+id/ivol_tb_clipboard"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_clipboard"
+            android:contentDescription="Clipboard"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <ImageButton
+            android:id="@+id/ivol_tb_translate"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_translate"
+            android:contentDescription="Translate"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <ImageButton
+            android:id="@+id/ivol_tb_settings"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_settings"
+            android:contentDescription="Settings"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+    </LinearLayout>
+    <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
+         We just need to ignore the system's audio and haptic feedback settings. -->
+    <LinearLayout
+        android:id="@+id/suggestions_strip"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toEndOf="@id/ivol_tb_logo"
+        android:layout_toRightOf="@id/ivol_tb_logo"
+        android:layout_toStartOf="@id/ivol_tb_emoji"
+        android:layout_toLeftOf="@id/ivol_tb_emoji"
+        android:hapticFeedbackEnabled="false"
+        android:soundEffectsEnabled="false" />
+    <LinearLayout
+        android:id="@+id/important_notice_strip"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toEndOf="@id/ivol_tb_logo"
+        android:layout_toRightOf="@id/ivol_tb_logo"
+        android:layout_toStartOf="@id/ivol_tb_emoji"
+        android:layout_toLeftOf="@id/ivol_tb_emoji"
+        android:hapticFeedbackEnabled="false"
+        android:soundEffectsEnabled="false" >
+        <TextView
+            android:id="@+id/important_notice_title"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="6sp"
+            android:textSize="16sp"
+            style="?attr/suggestionWordStyle" />
+    </LinearLayout>
+    <ImageButton
+        android:id="@+id/suggestions_strip_voice_key"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:contentDescription="@string/spoken_description_mic"
+        style="?attr/suggestionWordStyle" />
+</merge>

@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+.kotlin/
+build/
+app/build/
+app/.cxx/
+local.properties
+key.properties
+*.jks
+.idea/
+.DS_Store
+.ivol/
+CURRENT_TASK.md
+
+# sherpa-onnx AAR is downloaded by tools/fetch-sherpa-onnx.sh (52 MB)
+app/libs/*.aar

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IVOL: Yandex-like key: rounded rect with a thin darker bottom edge. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android" android:paddingMode="stack">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ivol_dark_key_shadow" />
+            <corners android:radius="@dimen/ivol_key_corner_radius" />
+        </shape>
+    </item>
+    <item android:bottom="@dimen/ivol_key_shadow_height">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ivol_dark_key" />
+            <corners android:radius="@dimen/ivol_key_corner_radius" />
+        </shape>
+    </item>
+</layer-list>
