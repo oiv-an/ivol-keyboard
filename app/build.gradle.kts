@@ -1,7 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// IVOL: defaults for the AI (magic wand) button, taken from a git-ignored local file.
+// The repository is public, so no key is ever committed: without the file the app simply
+// starts with empty AI settings and the user fills them in on the settings screen.
+val aiDev = Properties().apply {
+    val f = rootProject.file("ai-dev.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun aiDefault(key: String): String = (aiDev.getProperty(key) ?: "").trim()
 
 android {
     namespace = "com.android.inputmethod.latin"
@@ -12,9 +23,13 @@ android {
         applicationId = "pro.ivol.keyboard"
         minSdk = 24
         targetSdk = 30
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         ndk { abiFilters += listOf("arm64-v8a") }
+        buildConfigField("String", "IVOL_AI_BASE_URL", "\"${aiDefault("ivol.ai.baseUrl")}\"")
+        buildConfigField("String", "IVOL_AI_API_KEY", "\"${aiDefault("ivol.ai.apiKey")}\"")
+        buildConfigField("String", "IVOL_AI_MODEL", "\"${aiDefault("ivol.ai.model")}\"")
+        buildConfigField("String", "IVOL_AI_REASONING", "\"${aiDefault("ivol.ai.reasoning")}\"")
     }
 
     buildTypes {

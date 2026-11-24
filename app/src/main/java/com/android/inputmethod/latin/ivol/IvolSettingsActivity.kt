@@ -1,12 +1,16 @@
 package com.android.inputmethod.latin.ivol
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -17,11 +21,19 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import com.android.inputmethod.latin.settings.Settings
 import com.android.inputmethod.latin.settings.SettingsActivity
 
-/** IVOL: one simple settings screen (height, key width, corner rounding, vibration). */
+/** IVOL: one simple settings screen (look, vibration, AI model connection, wand prompts). */
 class IvolSettingsActivity : Activity() {
+
+    companion object {
+        const val EXTRA_SCROLL_TO_AI = "scroll_to_ai"
+    }
+
+    private var scrollView: ScrollView? = null
+    private var aiHeader: View? = null
 
     private val bg = Color.parseColor("#161C20")
     private val card = Color.parseColor("#242B30")
@@ -39,6 +51,17 @@ class IvolSettingsActivity : Activity() {
         window.navigationBarColor = bg
         IvolPrefs.init(this)
         setContentView(build())
+        if (intent?.getBooleanExtra(EXTRA_SCROLL_TO_AI, false) == true) scrollToAi()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        if (intent?.getBooleanExtra(EXTRA_SCROLL_TO_AI, false) == true) scrollToAi()
+    }
+
+    private fun scrollToAi() {
+        val sv = scrollView ?: return
+        sv.post { aiHeader?.let { sv.smoothScrollTo(0, it.top) } }
     }
 
     private fun build(): View {
@@ -113,6 +136,8 @@ class IvolSettingsActivity : Activity() {
                 .apply()
             seekBars.forEach { it.second() }
         })
+        buildAi(root)
+
         root.addView(button("Расширенные настройки", false) {
             startActivity(Intent(this, SettingsActivity::class.java))
         })
@@ -122,7 +147,170 @@ class IvolSettingsActivity : Activity() {
             setBackgroundColor(bg)
             isFillViewport = true
             addView(root)
+            scrollView = this
         }
+    }
+
+    // ---------------- AI: model connection + wand prompts ----------------
+
+    private fun buildAi(root: LinearLayout) {
+        val ap = IvolAiPrefs.prefs(this)
+
+        val header = sectionTitle("Подключение модели")
+        aiHeader = header
+        root.addView(header)
+        root.addView(note("Свой сервер в формате OpenAI. Им пользуется волшебная палочка " +
+            "на панели клавиатуры. Ключ хранится только на телефоне."))
+
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(label("Адрес сервера"))
+        box.addView(field(ap.getString(IvolAiPrefs.KEY_BASE_URL, "")!!, IvolAiPrefs.URL_HINT,
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI) {
+            ap.edit().putString(IvolAiPrefs.KEY_BASE_URL, it.trim()).apply()
+        })
+        box.addView(label("Ключ API"))
+        box.addView(field(ap.getString(IvolAiPrefs.KEY_API_KEY, "")!!, "sk-…",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD) {
+            ap.edit().putString(IvolAiPrefs.KEY_API_KEY, it.trim()).apply()
+        })
+
+        box.addView(label("Модель"))
+        val modelField = field(ap.getString(IvolAiPrefs.KEY_MODEL, "")!!, "выбери из списка или впиши",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) {
+            ap.edit().putString(IvolAiPrefs.KEY_MODEL, it.trim()).apply()
+        }
+        box.addView(modelField)
+        box.addView(smallButton("Выбрать модель с сервера") { pickModel(modelField) })
+
+        box.addView(label("Уровень размышлений"))
+        val reasoningView = TextView(this).apply {
+            setTextColor(accent)
+            textSize = 16f
+            setPadding(0, dp(6), 0, dp(6))
+            text = IvolAiPrefs.reasoningLabel(this@IvolSettingsActivity) + "  ▾"
+        }
+        reasoningView.setOnClickListener {
+            val cur = IvolAiPrefs.REASONING_VALUES.indexOf(IvolAiPrefs.reasoning(this)).coerceAtLeast(0)
+            AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Уровень размышлений")
+                .setSingleChoiceItems(IvolAiPrefs.REASONING_LABELS, cur) { d, which ->
+                    ap.edit().putString(IvolAiPrefs.KEY_REASONING, IvolAiPrefs.REASONING_VALUES[which]).apply()
+                    reasoningView.text = IvolAiPrefs.REASONING_LABELS[which] + "  ▾"
+                    d.dismiss()
+                }
+                .show()
+        }
+        box.addView(reasoningView)
+        box.addView(note("Если модель не поддерживает размышления, оставь «не отправлять».", 0))
+        root.addView(cardOf(box))
+
+        root.addView(sectionTitle("Кнопки волшебной палочки"))
+        root.addView(note("У каждой кнопки свой промт: что модель делает с текстом. " +
+            "Меняй под себя. Пустое поле — промт по умолчанию."))
+        for (action in IvolAiPrefs.ACTIONS) {
+            val b = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            b.addView(TextView(this).apply {
+                text = action.label
+                setTextColor(cText)
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            val promptField = field(IvolAiPrefs.prompt(this, action), action.defaultPrompt,
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                    InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, multiLine = true) {
+                ap.edit().putString(action.promptKey, it).apply()
+            }
+            b.addView(promptField)
+            b.addView(smallButton("Вернуть промт по умолчанию") {
+                ap.edit().remove(action.promptKey).apply()
+                promptField.setText(action.defaultPrompt)
+            })
+            root.addView(cardOf(b))
+        }
+    }
+
+    private fun pickModel(target: EditText) {
+        Toast.makeText(this, "Загружаю список моделей…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val res = try { Result.success(IvolAi.listModels(this)) } catch (e: Throwable) { Result.failure(e) }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                val models = res.getOrNull()
+                if (models == null) {
+                    Toast.makeText(this, "Не удалось получить модели: " +
+                        (res.exceptionOrNull()?.message ?: "ошибка"), Toast.LENGTH_LONG).show()
+                    return@runOnUiThread
+                }
+                if (models.isEmpty()) {
+                    Toast.makeText(this, "Сервер вернул пустой список — впиши модель вручную",
+                        Toast.LENGTH_LONG).show()
+                    return@runOnUiThread
+                }
+                val arr = models.toTypedArray()
+                AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Модель")
+                    .setSingleChoiceItems(arr, arr.indexOf(target.text.toString().trim())) { d, which ->
+                        target.setText(arr[which]) // the watcher saves it
+                        d.dismiss()
+                    }
+                    .show()
+            }
+        }.start()
+    }
+
+    private fun sectionTitle(t: String): View = TextView(this).apply {
+        text = t
+        setTextColor(cText)
+        textSize = 19f
+        typeface = Typeface.DEFAULT_BOLD
+        setPadding(dp(4), dp(18), dp(4), dp(4))
+    }
+
+    private fun note(t: String, bottom: Int = 10): View = TextView(this).apply {
+        text = t
+        setTextColor(sub)
+        textSize = 13f
+        setPadding(dp(4), dp(2), dp(4), dp(bottom))
+    }
+
+    private fun label(t: String): View = TextView(this).apply {
+        text = t
+        setTextColor(sub)
+        textSize = 13f
+        setPadding(0, dp(10), 0, 0)
+    }
+
+    private fun field(
+        value: String, hintText: String, type: Int, multiLine: Boolean = false,
+        onChange: (String) -> Unit,
+    ): EditText = EditText(this).apply {
+        setText(value)
+        hint = hintText
+        setHintTextColor(sub)
+        setTextColor(cText)
+        textSize = 15f
+        inputType = type
+        if (multiLine) {
+            isSingleLine = false
+            minLines = 3
+            maxLines = 10
+            gravity = Gravity.TOP or Gravity.START
+        } else {
+            isSingleLine = true
+        }
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) { onChange(s?.toString() ?: "") }
+        })
+    }
+
+    private fun smallButton(t: String, onClick: () -> Unit): View = TextView(this).apply {
+        text = t
+        setTextColor(accent)
+        textSize = 14f
+        setPadding(0, dp(8), 0, dp(4))
+        setOnClickListener { onClick() }
     }
 
     private fun slider(

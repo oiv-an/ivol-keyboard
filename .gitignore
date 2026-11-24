@@ -6,6 +6,7 @@ app/build/
 app/.cxx/
 local.properties
 key.properties
+ai-dev.properties
 *.jks
 .idea/
 .DS_Store

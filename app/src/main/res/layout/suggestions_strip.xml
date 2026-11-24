@@ -19,6 +19,7 @@
 -->
 <!-- IVOL: Yandex-like top bar.
      Idle:   [logo] [AI] [clipboard] [translate] [settings] [emoji]
+     Wand:   [logo] [AI*] [format] [rewrite] [translate-AI]  [emoji]
      Typing: [logo] [ word | word | word ]                   [emoji] -->
 <merge
     xmlns:android="http://schemas.android.com/apk/res/android">
@@ -97,6 +98,63 @@
             android:scaleType="center"
             android:src="@drawable/ivol_ic_settings"
             android:contentDescription="Settings"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+    </LinearLayout>
+    <!-- IVOL: magic-wand row, replaces the middle icons in place (no panel, no labels). -->
+    <LinearLayout
+        android:id="@+id/ivol_tb_ai_row"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toEndOf="@id/ivol_tb_logo"
+        android:layout_toRightOf="@id/ivol_tb_logo"
+        android:layout_toStartOf="@id/ivol_tb_emoji"
+        android:layout_toLeftOf="@id/ivol_tb_emoji"
+        android:visibility="invisible">
+        <ImageButton
+            android:id="@+id/ivol_tb_ai_back"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_ai"
+            android:tint="#C1E8FF"
+            android:contentDescription="AI"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <ImageButton
+            android:id="@+id/ivol_tb_ai_format"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_ai_format"
+            android:contentDescription="Format"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <ImageButton
+            android:id="@+id/ivol_tb_ai_rewrite"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_ai_rewrite"
+            android:contentDescription="Rewrite"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <ImageButton
+            android:id="@+id/ivol_tb_ai_translate"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_ai_translate"
+            android:contentDescription="Translate with AI"
             android:hapticFeedbackEnabled="false"
             android:soundEffectsEnabled="false" />
     </LinearLayout>

@@ -69,6 +69,9 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
     private final ViewGroup mSuggestionsStrip;
     private final ImageButton mVoiceKey;
     private final View mToolbarMiddle;
+    // IVOL: magic-wand row shown in place of the middle icons.
+    private final View mAiRow;
+    private boolean mAiMode;
     private final View mImportantNoticeStrip;
     MainKeyboardView mMainKeyboardView;
 
@@ -147,9 +150,23 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mSuggestionsStrip = (ViewGroup)findViewById(R.id.suggestions_strip);
         mVoiceKey = (ImageButton)findViewById(R.id.suggestions_strip_voice_key);
         mToolbarMiddle = findViewById(R.id.ivol_tb_middle);
+        mAiRow = findViewById(R.id.ivol_tb_ai_row);
         for (final int id : new int[] { R.id.ivol_tb_logo, R.id.ivol_tb_emoji, R.id.ivol_tb_ai,
-                R.id.ivol_tb_clipboard, R.id.ivol_tb_translate, R.id.ivol_tb_settings }) {
+                R.id.ivol_tb_clipboard, R.id.ivol_tb_translate, R.id.ivol_tb_settings,
+                R.id.ivol_tb_ai_back, R.id.ivol_tb_ai_format, R.id.ivol_tb_ai_rewrite,
+                R.id.ivol_tb_ai_translate }) {
             findViewById(id).setOnClickListener(this);
+        }
+        // IVOL: long press on the wand (or any wand action) opens the AI settings.
+        for (final int id : new int[] { R.id.ivol_tb_ai, R.id.ivol_tb_ai_back,
+                R.id.ivol_tb_ai_format, R.id.ivol_tb_ai_rewrite, R.id.ivol_tb_ai_translate }) {
+            findViewById(id).setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(final View v) {
+                    openIvolSettings(true);
+                    return true;
+                }
+            });
         }
         mImportantNoticeStrip = findViewById(R.id.important_notice_strip);
         mStripVisibilityGroup = new StripVisibilityGroup(this, mSuggestionsStrip,
@@ -217,7 +234,9 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             showToolbar();
             return;
         }
+        mAiMode = false;
         mToolbarMiddle.setVisibility(INVISIBLE);
+        mAiRow.setVisibility(INVISIBLE);
         mStartIndexOfMoreSuggestions = mLayoutHelper.layoutAndReturnStartIndexOfMoreSuggestions(
                 getContext(), mSuggestedWords, mSuggestionsStrip, this);
         mStripVisibilityGroup.showSuggestionsStrip();
@@ -225,7 +244,38 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
 
     private void showToolbar() {
         mStripVisibilityGroup.hideAll();
-        mToolbarMiddle.setVisibility(VISIBLE);
+        mToolbarMiddle.setVisibility(mAiMode ? INVISIBLE : VISIBLE);
+        mAiRow.setVisibility(mAiMode ? VISIBLE : INVISIBLE);
+    }
+
+    /** IVOL: switch the middle of the bar between the normal icons and the wand actions. */
+    private void setAiMode(final boolean on) {
+        mAiMode = on;
+        showToolbar();
+    }
+
+    private void openIvolSettings(final boolean scrollToAi) {
+        final android.content.Intent intent = new android.content.Intent(getContext(),
+                com.android.inputmethod.latin.ivol.IvolSettingsActivity.class);
+        intent.putExtra(com.android.inputmethod.latin.ivol.IvolSettingsActivity.EXTRA_SCROLL_TO_AI,
+                scrollToAi);
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        getContext().startActivity(intent);
+    }
+
+    private void runAiAction(final com.android.inputmethod.latin.ivol.IvolAiPrefs.Action action) {
+        final com.android.inputmethod.latin.LatinIME ime =
+                com.android.inputmethod.latin.ivol.ClipboardHistory.getIme();
+        if (ime == null) return;
+        // Dim the wand row while the model is answering.
+        mAiRow.setAlpha(0.4f);
+        com.android.inputmethod.latin.ivol.IvolAi.run(ime, action, new Runnable() {
+            @Override
+            public void run() {
+                mAiRow.setAlpha(1f);
+            }
+        });
     }
 
     public void setMoreSuggestionsHeight(final int remainingHeight) {
@@ -487,6 +537,24 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             com.android.inputmethod.latin.ivol.ClipboardPanelView.toggleCurrent();
             return;
         }
+        // IVOL: magic wand — the three actions appear right in this bar.
+        if (id == R.id.ivol_tb_ai || id == R.id.ivol_tb_ai_back) {
+            com.android.inputmethod.latin.ivol.ClipboardPanelView.hideCurrent();
+            setAiMode(id == R.id.ivol_tb_ai);
+            return;
+        }
+        if (id == R.id.ivol_tb_ai_format) {
+            runAiAction(com.android.inputmethod.latin.ivol.IvolAiPrefs.ACTION_FORMAT);
+            return;
+        }
+        if (id == R.id.ivol_tb_ai_rewrite) {
+            runAiAction(com.android.inputmethod.latin.ivol.IvolAiPrefs.ACTION_REWRITE);
+            return;
+        }
+        if (id == R.id.ivol_tb_ai_translate) {
+            runAiAction(com.android.inputmethod.latin.ivol.IvolAiPrefs.ACTION_TRANSLATE);
+            return;
+        }
         // Any other toolbar action closes the clipboard panel.
         com.android.inputmethod.latin.ivol.ClipboardPanelView.hideCurrent();
         if (id == R.id.ivol_tb_emoji) {
@@ -495,11 +563,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             return;
         }
         if (id == R.id.ivol_tb_settings) {
-            final android.content.Intent intent = new android.content.Intent(getContext(),
-                    com.android.inputmethod.latin.ivol.IvolSettingsActivity.class);
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                    | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            getContext().startActivity(intent);
+            openIvolSettings(false);
             return;
         }
         if (id == R.id.ivol_tb_translate) {
@@ -510,10 +574,11 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             }
             return;
         }
-        if (id == R.id.ivol_tb_logo || id == R.id.ivol_tb_ai) {
-            // TODO(IVOL): AI editor, logo menu.
-            android.widget.Toast.makeText(getContext(), "Скоро", android.widget.Toast.LENGTH_SHORT)
-                    .show();
+        if (id == R.id.ivol_tb_logo) {
+            // IVOL: the logo always brings back the tool icons (wand, clipboard...), even while
+            // word suggestions are shown, e.g. after dictating.
+            mAiMode = false;
+            showToolbar();
             return;
         }
 

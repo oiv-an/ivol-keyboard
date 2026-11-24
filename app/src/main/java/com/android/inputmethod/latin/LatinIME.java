@@ -1162,6 +1162,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         } finally {
             c.endBatchEdit();
         }
+        // IVOL: the word the user was typing before the mic is gone, so drop its suggestions
+        // (otherwise the strip keeps showing it while dictating).
+        setNeutralSuggestionStrip();
     }
 
     @Override
