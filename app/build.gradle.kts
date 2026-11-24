@@ -14,6 +14,13 @@ val aiDev = Properties().apply {
 }
 fun aiDefault(key: String): String = (aiDev.getProperty(key) ?: "").trim()
 
+// IVOL: release signing. Values live in a git-ignored key.properties in the project root
+// (storeFile, storePassword, keyAlias, keyPassword). Without it a release build is unsigned.
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.android.inputmethod.latin"
     compileSdk = 36
@@ -26,19 +33,40 @@ android {
         versionCode = 2
         versionName = "0.2.0"
         ndk { abiFilters += listOf("arm64-v8a") }
-        buildConfigField("String", "IVOL_AI_BASE_URL", "\"${aiDefault("ivol.ai.baseUrl")}\"")
-        buildConfigField("String", "IVOL_AI_API_KEY", "\"${aiDefault("ivol.ai.apiKey")}\"")
-        buildConfigField("String", "IVOL_AI_MODEL", "\"${aiDefault("ivol.ai.model")}\"")
-        buildConfigField("String", "IVOL_AI_REASONING", "\"${aiDefault("ivol.ai.reasoning")}\"")
+        // Public builds ship with empty AI settings; the user fills them in the app.
+        buildConfigField("String", "IVOL_AI_BASE_URL", "\"\"")
+        buildConfigField("String", "IVOL_AI_API_KEY", "\"\"")
+        buildConfigField("String", "IVOL_AI_MODEL", "\"\"")
+        buildConfigField("String", "IVOL_AI_REASONING", "\"\"")
+    }
+
+    signingConfigs {
+        if (keyProps.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            // Local developer defaults for the magic wand, debug only: a release APK is
+            // published to everyone and must never carry anybody's API key.
+            buildConfigField("String", "IVOL_AI_BASE_URL", "\"${aiDefault("ivol.ai.baseUrl")}\"")
+            buildConfigField("String", "IVOL_AI_API_KEY", "\"${aiDefault("ivol.ai.apiKey")}\"")
+            buildConfigField("String", "IVOL_AI_MODEL", "\"${aiDefault("ivol.ai.model")}\"")
+            buildConfigField("String", "IVOL_AI_REASONING", "\"${aiDefault("ivol.ai.reasoning")}\"")
         }
         release {
-            isMinifyEnabled = true
+            // R8 is off: LatinIME, sherpa-onnx and ML Kit reach Java code from JNI and
+            // reflection, so a shrunk build is a silent-crash risk for no real gain here.
+            isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
