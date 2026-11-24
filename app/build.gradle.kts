@@ -30,8 +30,8 @@ android {
         applicationId = "pro.ivol.keyboard"
         minSdk = 24
         targetSdk = 30
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
         ndk { abiFilters += listOf("arm64-v8a") }
         // Public builds ship with empty AI settings; the user fills them in the app.
         buildConfigField("String", "IVOL_AI_BASE_URL", "\"\"")

@@ -18,7 +18,7 @@
 */
 -->
 <!-- IVOL: Yandex-like top bar.
-     Idle:   [logo] [AI] [clipboard] [translate] [settings] [emoji]
+     Idle:   [logo] [AI] [clipboard] [translate] [settings] ([update]) [emoji]
      Wand:   [logo] [AI*] [format] [rewrite] [translate-AI]  [emoji]
      Typing: [logo] [ word | word | word ]                   [emoji] -->
 <merge
@@ -98,6 +98,19 @@
             android:scaleType="center"
             android:src="@drawable/ivol_ic_settings"
             android:contentDescription="Settings"
+            android:hapticFeedbackEnabled="false"
+            android:soundEffectsEnabled="false" />
+        <!-- IVOL: shown only when a newer release exists on GitHub; tap = update. -->
+        <ImageButton
+            android:id="@+id/ivol_tb_update"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/ivol_toolbar_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/ivol_ic_update"
+            android:contentDescription="Update"
+            android:visibility="gone"
             android:hapticFeedbackEnabled="false"
             android:soundEffectsEnabled="false" />
     </LinearLayout>

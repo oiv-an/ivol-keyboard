@@ -71,6 +71,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
     private final View mToolbarMiddle;
     // IVOL: magic-wand row shown in place of the middle icons.
     private final View mAiRow;
+    private View mUpdateButton;
     private boolean mAiMode;
     private final View mImportantNoticeStrip;
     MainKeyboardView mMainKeyboardView;
@@ -154,9 +155,18 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         for (final int id : new int[] { R.id.ivol_tb_logo, R.id.ivol_tb_emoji, R.id.ivol_tb_ai,
                 R.id.ivol_tb_clipboard, R.id.ivol_tb_translate, R.id.ivol_tb_settings,
                 R.id.ivol_tb_ai_back, R.id.ivol_tb_ai_format, R.id.ivol_tb_ai_rewrite,
-                R.id.ivol_tb_ai_translate }) {
+                R.id.ivol_tb_ai_translate, R.id.ivol_tb_update }) {
             findViewById(id).setOnClickListener(this);
         }
+        // IVOL: update icon on the right of the bar appears when GitHub has a newer release.
+        mUpdateButton = findViewById(R.id.ivol_tb_update);
+        com.android.inputmethod.latin.ivol.IvolUpdater.setOnAvailableChanged(new Runnable() {
+            @Override
+            public void run() {
+                refreshUpdateButton();
+            }
+        });
+        refreshUpdateButton();
         // IVOL: long press on the wand (or any wand action) opens the AI settings.
         for (final int id : new int[] { R.id.ivol_tb_ai, R.id.ivol_tb_ai_back,
                 R.id.ivol_tb_ai_format, R.id.ivol_tb_ai_rewrite, R.id.ivol_tb_ai_translate }) {
@@ -240,6 +250,12 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mStartIndexOfMoreSuggestions = mLayoutHelper.layoutAndReturnStartIndexOfMoreSuggestions(
                 getContext(), mSuggestedWords, mSuggestionsStrip, this);
         mStripVisibilityGroup.showSuggestionsStrip();
+    }
+
+    private void refreshUpdateButton() {
+        final boolean show = com.android.inputmethod.latin.ivol.IvolUpdater
+                .availableVersion(getContext()) != null;
+        mUpdateButton.setVisibility(show ? VISIBLE : GONE);
     }
 
     private void showToolbar() {
@@ -564,6 +580,17 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         }
         if (id == R.id.ivol_tb_settings) {
             openIvolSettings(false);
+            return;
+        }
+        if (id == R.id.ivol_tb_update) {
+            // IVOL: update only on the user's tap: settings screen downloads, verifies, installs.
+            final android.content.Intent intent = new android.content.Intent(getContext(),
+                    com.android.inputmethod.latin.ivol.IvolSettingsActivity.class);
+            intent.putExtra(
+                    com.android.inputmethod.latin.ivol.IvolSettingsActivity.EXTRA_INSTALL_UPDATE, true);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            getContext().startActivity(intent);
             return;
         }
         if (id == R.id.ivol_tb_translate) {

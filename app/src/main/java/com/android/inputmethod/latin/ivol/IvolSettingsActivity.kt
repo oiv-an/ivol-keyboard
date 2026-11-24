@@ -30,10 +30,12 @@ class IvolSettingsActivity : Activity() {
 
     companion object {
         const val EXTRA_SCROLL_TO_AI = "scroll_to_ai"
+        const val EXTRA_INSTALL_UPDATE = "install_update"
     }
 
     private var scrollView: ScrollView? = null
     private var aiHeader: View? = null
+    private var updateStatusView: TextView? = null
 
     private val bg = Color.parseColor("#161C20")
     private val card = Color.parseColor("#242B30")
@@ -51,12 +53,34 @@ class IvolSettingsActivity : Activity() {
         window.navigationBarColor = bg
         IvolPrefs.init(this)
         setContentView(build())
-        if (intent?.getBooleanExtra(EXTRA_SCROLL_TO_AI, false) == true) scrollToAi()
+        handleIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_SCROLL_TO_AI, false) == true) scrollToAi()
+        // Came from the update notification: install the already downloaded APK right away.
+        if (intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true) IvolUpdater.checkNow(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        IvolUpdater.listener = { s -> runOnUiThread { updateStatusView?.text = s } }
+        updateStatusView?.text = updateStatusText()
+        // Back from "allow installing apps": continue the update the user started.
+        if (IvolUpdater.pendingInstall && (android.os.Build.VERSION.SDK_INT < 26 ||
+                packageManager.canRequestPackageInstalls())) {
+            IvolUpdater.checkNow(this)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        IvolUpdater.listener = null
     }
 
     private fun scrollToAi() {
@@ -137,6 +161,7 @@ class IvolSettingsActivity : Activity() {
             seekBars.forEach { it.second() }
         })
         buildAi(root)
+        buildUpdates(root)
 
         root.addView(button("Расширенные настройки", false) {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -227,6 +252,49 @@ class IvolSettingsActivity : Activity() {
             })
             root.addView(cardOf(b))
         }
+    }
+
+    // ---------------- Updates from GitHub Releases ----------------
+
+    private fun updateStatusText(): String {
+        if (IvolUpdater.lastStatus.isNotEmpty()) return IvolUpdater.lastStatus
+        val available = IvolUpdater.availableVersion(this)
+        if (available != null) return "Есть версия $available — нажми «Проверить и обновить»"
+        return "Установлена версия " + IvolUpdater.currentVersion()
+    }
+
+    private fun buildUpdates(root: LinearLayout) {
+        root.addView(sectionTitle("Обновления"))
+        root.addView(note("Раз в день, пока ты печатаешь, клавиатура смотрит релизы на GitHub " +
+            "(${IvolUpdater.REPO}). Если вышла новая версия, справа на панели появится значок " +
+            "обновления. Обновление ставится только по нажатию, настройки и словарь сохраняются."))
+
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(TextView(this@IvolSettingsActivity).apply {
+                setText("Проверять автоматически")
+                setTextColor(cText)
+                textSize = 16f
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(Switch(this@IvolSettingsActivity).apply {
+                isChecked = IvolUpdater.isAutoEnabled(this@IvolSettingsActivity)
+                setOnCheckedChangeListener { _, on ->
+                    IvolUpdater.setAutoEnabled(this@IvolSettingsActivity, on)
+                }
+            })
+        })
+        val status = TextView(this).apply {
+            setTextColor(sub)
+            textSize = 13f
+            setPadding(0, dp(8), 0, 0)
+            text = updateStatusText()
+        }
+        updateStatusView = status
+        box.addView(status)
+        box.addView(smallButton("Проверить и обновить") { IvolUpdater.checkNow(this) })
+        root.addView(cardOf(box))
     }
 
     private fun pickModel(target: EditText) {

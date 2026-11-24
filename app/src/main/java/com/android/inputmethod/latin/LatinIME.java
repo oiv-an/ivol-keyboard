@@ -1549,6 +1549,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         final Event event = createSoftwareKeypressEvent(getCodePointForKeyboard(codePoint),
                 keyX, keyY, isKeyRepeat);
         onEvent(event);
+        // IVOL: the person is really typing → background update check (at most once a day).
+        com.android.inputmethod.latin.ivol.IvolUpdater.onKeyTyped(this);
     }
 
     // This method is public for testability of LatinIME, but also in the future it should
