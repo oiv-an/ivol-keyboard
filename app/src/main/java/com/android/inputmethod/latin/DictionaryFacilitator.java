@@ -169,6 +169,9 @@ public interface DictionaryFacilitator {
 
     boolean isValidSuggestionWord(final String word);
 
+    /** IVOL: highest probability of the word over all dictionaries, or -1 if unknown. */
+    int getMaxFrequencyOfWord(final String word);
+
     boolean clearUserHistoryDictionary(final Context context);
 
     String dump(final Context context);

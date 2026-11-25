@@ -686,6 +686,14 @@ public class DictionaryFacilitatorImpl implements DictionaryFacilitator {
         return false;
     }
 
+    @Override
+    public int getMaxFrequencyOfWord(final String word) {
+        if (mDictionaryGroup.mLocale == null) {
+            return Dictionary.NOT_A_PROBABILITY;
+        }
+        return getFrequency(word);
+    }
+
     private int getFrequency(final String word) {
         if (TextUtils.isEmpty(word)) {
             return Dictionary.NOT_A_PROBABILITY;

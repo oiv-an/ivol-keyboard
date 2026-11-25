@@ -1508,16 +1508,16 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         final android.view.inputmethod.InputMethodInfo imi = mRichImm.getInputMethodInfoOfThisIme();
         final InputMethodSubtype current = mRichImm.getInputMethodManager()
                 .getCurrentInputMethodSubtype();
-        final int count = imi.getSubtypeCount();
-        if (count < 2) return;
-        int index = 0;
-        for (int i = 0; i < count; i++) {
-            if (imi.getSubtypeAt(i).equals(current)) {
-                index = i;
-                break;
-            }
+        final java.util.ArrayList<InputMethodSubtype> ours = new java.util.ArrayList<>();
+        for (int i = 0; i < imi.getSubtypeCount(); i++) {
+            final InputMethodSubtype st = imi.getSubtypeAt(i);
+            final String locale = st.getLocale();
+            if (locale.startsWith("ru") || locale.startsWith("en")) ours.add(st);
         }
-        mRichImm.setInputMethodAndSubtype(token, imi.getSubtypeAt((index + 1) % count));
+        final int count = ours.size();
+        if (count < 2) return;
+        final int index = Math.max(0, ours.indexOf(current));
+        mRichImm.setInputMethodAndSubtype(token, ours.get((index + 1) % count));
     }
 
     // TODO: Instead of checking for alphabetic keyboard here, separate keycodes for

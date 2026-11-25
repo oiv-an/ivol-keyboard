@@ -1035,9 +1035,9 @@ public final class InputLogic {
             }
             inputTransaction.setRequiresUpdateSuggestions();
         } else {
-            // IVOL: backspace always deletes a character (like Yandex); no "revert autocorrect"
-            // on the first press, which felt like the key was not pressed.
-            if (false && mLastComposedWord.canRevertCommit()) {
+            // IVOL: like Yandex - the first backspace right after an auto-correction brings back
+            // the word exactly as it was typed (and removes the auto-inserted space).
+            if (mLastComposedWord.canRevertCommit()) {
                 final String lastComposedWord = mLastComposedWord.mTypedWord;
                 revertCommit(inputTransaction, inputTransaction.mSettingsValues);
                 StatsUtils.onRevertAutoCorrect();

@@ -111,10 +111,9 @@ public class RichInputMethodManager {
     }
 
     public InputMethodSubtype[] getAdditionalSubtypes() {
-        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-        final String prefAdditionalSubtypes = Settings.readPrefAdditionalSubtypes(
-                prefs, mContext.getResources());
-        return AdditionalSubtypeUtils.createAdditionalSubtypesArray(prefAdditionalSubtypes);
+        // IVOL: only our RU + EN subtypes from method.xml. Registering an empty array also
+        // removes the AOSP extras (German QWERTY, French QWERTZ) already saved in the system.
+        return new InputMethodSubtype[0];
     }
 
     public InputMethodManager getInputMethodManager() {

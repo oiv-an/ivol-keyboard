@@ -247,6 +247,51 @@ public final class Suggest {
             }
         }
 
+        // IVOL: like Yandex - glued words get split: "тотже" -> "тот же" (missed space) and
+        // "тотбже" -> "тот же" (a letter hit instead of the space).
+        boolean willAutoCorrect = hasAutoCorrection;
+        if (!resultsArePredictions && sourceDictionaryOfRemovedWord == null
+                && trailingSingleQuotesCount == 0 && !wordComposer.hasDigits()
+                && !wordComposer.isMostlyCaps()) {
+            final String lower = consideredWord.toLowerCase(locale);
+            final IvolSplit split = mDictionaryFacilitator.getMaxFrequencyOfWord(lower) < 0
+                    ? ivolFindSplit(lower) : null;
+            if (split != null) {
+                final String splitWord = wordComposer.isOrWillBeOnlyFirstCharCapitalized()
+                        ? StringUtils.capitalizeFirstCodePoint(split.mWord, locale)
+                        : split.mWord;
+                for (int i = suggestionsContainer.size() - 1; i >= 0; --i) {
+                    if (splitWord.equals(suggestionsContainer.get(i).mWord)) {
+                        suggestionsContainer.remove(i);
+                    }
+                }
+                final boolean canAutoCorrect = isCorrectionEnabled && !wordComposer.isResumed()
+                        && mDictionaryFacilitator.hasAtLeastOneInitializedMainDictionary();
+                // Auto-apply only confident splits; the rest are just offered in the strip.
+                // A one-letter word may only be the left part (preposition: "вдоме" -> "в доме").
+                // Over an existing correction only a missed space between two real words wins
+                // ("тотже" -> "тот же", but "спасибоо" stays "спасибо").
+                final boolean confident = split.mMinProbability >= IVOL_SPLIT_WIN_PROBABILITY
+                        && split.mRightLength >= 2;
+                final boolean splitWins = canAutoCorrect && confident && (!hasAutoCorrection
+                        || (split.mIsPureOmission && split.mLeftLength >= 2
+                                && consideredWord.length() >= 5));
+                final SuggestedWordInfo splitInfo = new SuggestedWordInfo(splitWord,
+                        "" /* prevWordsContext */, SuggestedWordInfo.MAX_SCORE - 1,
+                        SuggestedWordInfo.KIND_CORRECTION
+                                | SuggestedWordInfo.KIND_FLAG_APPROPRIATE_FOR_AUTO_CORRECTION,
+                        Dictionary.DICTIONARY_USER_TYPED,
+                        SuggestedWordInfo.NOT_AN_INDEX /* indexOfTouchPointOfSecondWord */,
+                        SuggestedWordInfo.NOT_A_CONFIDENCE /* autoCommitFirstWordConfidence */);
+                if (splitWins) {
+                    suggestionsContainer.add(0, splitInfo);
+                    willAutoCorrect = true;
+                } else {
+                    suggestionsContainer.add(Math.min(1, suggestionsContainer.size()), splitInfo);
+                }
+            }
+        }
+
         final SuggestedWordInfo typedWordInfo = new SuggestedWordInfo(typedWordString,
                 "" /* prevWordsContext */, SuggestedWordInfo.MAX_SCORE,
                 SuggestedWordInfo.KIND_TYPED,
@@ -280,8 +325,68 @@ public final class Suggest {
         callback.onGetSuggestedWords(new SuggestedWords(suggestionsList,
                 suggestionResults.mRawSuggestions, typedWordInfo,
                 isTypedWordValid,
-                hasAutoCorrection /* willAutoCorrect */,
+                willAutoCorrect /* willAutoCorrect */,
                 false /* isObsoleteSuggestions */, inputStyle, sequenceNumber));
+    }
+
+    // IVOL: glued-words split ------------------------------------------------------------
+    private static final String IVOL_ONE_LETTER_WORDS = "авиксоуяai";
+    private static final int IVOL_SPLIT_MIN_PROBABILITY = 25;
+    private static final int IVOL_SPLIT_WIN_PROBABILITY = 80;
+    private static final int IVOL_EXTRA_LETTER_PENALTY = 30;
+
+    private static final class IvolSplit {
+        final String mWord;
+        final boolean mIsPureOmission;
+        final int mScore;
+        final int mMinProbability;
+        final int mLeftLength;
+        final int mRightLength;
+
+        IvolSplit(final String left, final String right, final boolean isPureOmission,
+                final int minProbability, final int score) {
+            mWord = left + " " + right;
+            mIsPureOmission = isPureOmission;
+            mScore = score;
+            mMinProbability = minProbability;
+            mLeftLength = left.length();
+            mRightLength = right.length();
+        }
+    }
+
+    /** Best "left right" split of an unknown lower-case word, or null. */
+    private IvolSplit ivolFindSplit(final String lower) {
+        final int n = lower.length();
+        if (n < 3 || n > 24) return null;
+        for (int i = 0; i < n; ++i) {
+            if (!Character.isLetter(lower.charAt(i))) return null;
+        }
+        IvolSplit best = null;
+        // extra == 0: the space was missed; extra == 1: one letter was typed instead of it.
+        for (int extra = 0; extra <= 1; ++extra) {
+            for (int i = 1; i + extra < n; ++i) {
+                final String left = lower.substring(0, i);
+                final String right = lower.substring(i + extra);
+                // A one-letter right part is almost always a word still being typed ("тотж").
+                if (right.length() < 2 || (extra == 1 && left.length() < 2)) continue;
+                final int pl = ivolPartProbability(left);
+                if (pl < 0) continue;
+                final int pr = ivolPartProbability(right);
+                if (pr < 0) continue;
+                final int min = Math.min(pl, pr);
+                final int score = min - extra * IVOL_EXTRA_LETTER_PENALTY;
+                if (best == null || score > best.mScore) {
+                    best = new IvolSplit(left, right, extra == 0, min, score);
+                }
+            }
+        }
+        return best;
+    }
+
+    private int ivolPartProbability(final String part) {
+        if (part.length() == 1 && IVOL_ONE_LETTER_WORDS.indexOf(part.charAt(0)) < 0) return -1;
+        final int p = mDictionaryFacilitator.getMaxFrequencyOfWord(part);
+        return p >= IVOL_SPLIT_MIN_PROBABILITY ? p : -1;
     }
 
     // Retrieves suggestions for the batch input

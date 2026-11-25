@@ -124,10 +124,13 @@ public final class InputAttributes {
         // disable auto correction, but keep suggestions on.
         // If NO_SUGGESTIONS is set, don't do prediction.
         // If it's not multiline and the autoCorrect flag is not set, then don't correct
-        mInputTypeNoAutoCorrect =
-                (variation == InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT && !flagAutoCorrect)
-                || flagNoSuggestions
-                || (!flagAutoCorrect && !flagMultiLine);
+        // IVOL: like Yandex - correct in every ordinary text field (chats, search, browser
+        // inputs), not only in fields that request it; skip names/addresses/filters.
+        mInputTypeNoAutoCorrect = flagNoSuggestions
+                || InputType.TYPE_TEXT_VARIATION_PERSON_NAME == variation
+                || InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS == variation
+                || InputType.TYPE_TEXT_VARIATION_PHONETIC == variation
+                || InputType.TYPE_TEXT_VARIATION_FILTER == variation;
 
         mApplicationSpecifiedCompletionOn = flagAutoComplete && isFullscreenMode;
 
