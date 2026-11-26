@@ -1,6 +1,6 @@
 # IVOL Keyboard
 
-Клавиатура для Android с офлайн-распознаванием речи (GigaAM от Сбера), офлайн-переводом и
+Клавиатура для Android с офлайн-распознаванием речи (GigaAM от Сбера или Fluid Speech Pro), офлайн-переводом и
 «волшебной палочкой» — правкой текста нейросетью через твой собственный сервер.
 Основана на клавиатуре Android Open Source Project (LatinIME), Apache-2.0.
 
@@ -37,9 +37,14 @@ APK подписан ключом разработчика; обновления
 ## Возможности
 
 - **Голосовой ввод офлайн.** Отдельная кнопка микрофона справа от пробела: нажал, держишь,
-  говоришь, отпустил. Модель [GigaAM v3](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16)
-  (Сбер) запускается через [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). Текст пишется
-  по ходу речи, со знаками препинания.
+  говоришь, отпустил. Текст пишется по ходу речи, со знаками препинания. Модель выбирается
+  в настройках («Голосовой ввод»), обе работают через [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx):
+  - [GigaAM v3](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16)
+    (Сбер) — только русский, ~230 МБ, быстрая;
+  - [Fluid Speech Pro](https://huggingface.co/FluidVoice-Labs/fluid-speech-pro-onnx) (int8) —
+    25 европейских языков, ~800 МБ, точнее, но тяжелее.
+
+  Ненужную модель можно удалить кнопкой «Удалить», чтобы не занимала место.
 - **Волшебная палочка (нейросеть).** Нажатие на палочку прямо в верхней строке заменяет иконки
   на три действия:
   - «Оформить» — орфография, пунктуация, регистр без изменения смысла;
@@ -141,9 +146,10 @@ adb shell ime set pro.ivol.keyboard.debug/com.android.inputmethod.latin.LatinIME
 
 ## Модель распознавания речи
 
-Модель (около 230 МБ) не входит в APK. При первом нажатии на микрофон приложение скачивает
-её в свою папку `files/gigaam/` и дальше работает без интернета. Можно положить файлы
-заранее вручную:
+Модели не входят в APK. Выбранная модель скачивается при первом нажатии на микрофон или
+кнопкой «Скачать» в настройках: GigaAM — в `files/gigaam/`, Fluid Speech Pro — в `files/fluid/`.
+Дальше распознавание работает без интернета. Скачивание продолжается после обрыва, каждый
+файл проверяется по размеру и SHA-256. GigaAM можно положить заранее вручную:
 
 ```sh
 # файлы encoder.int8.onnx, decoder.onnx, joiner.onnx, tokens.txt из репозитория модели
@@ -178,6 +184,8 @@ adb shell run-as pro.ivol.keyboard.debug sh -c \
 - Код проекта и AOSP LatinIME — Apache License 2.0, см. [LICENSE](LICENSE) и [NOTICE](NOTICE).
 - sherpa-onnx — Apache License 2.0.
 - Модель GigaAM — лицензия владельца модели (Сбер), см. страницу модели.
+- Модель Fluid Speech Pro — CC BY 4.0, © FluidVoice Labs (на основе NVIDIA Parakeet TDT 0.6B v3),
+  см. [страницу модели](https://huggingface.co/FluidVoice-Labs/fluid-speech-pro-onnx).
 - Словари `app/src/main/res/raw/main_ru.dict` и `main_en.dict` — из AOSP, включают словари
   Lexiteria LLC, используемые по разрешению (см. `NOTICE`).
 - Словари остальных языков (релиз `dicts-v1`) — копии из

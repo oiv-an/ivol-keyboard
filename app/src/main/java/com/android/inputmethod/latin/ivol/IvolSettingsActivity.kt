@@ -37,6 +37,7 @@ class IvolSettingsActivity : Activity() {
     private var aiHeader: View? = null
     private var updateStatusView: TextView? = null
     private var langsBox: LinearLayout? = null
+    private var voiceBox: LinearLayout? = null
 
     private val bg = Color.parseColor("#161C20")
     private val card = Color.parseColor("#242B30")
@@ -72,7 +73,9 @@ class IvolSettingsActivity : Activity() {
         super.onResume()
         IvolUpdater.listener = { s -> runOnUiThread { updateStatusView?.text = s } }
         IvolLanguages.listener = Runnable { runOnUiThread { refreshLanguages() } }
+        GigaAmVoice.settingsListener = Runnable { refreshVoice() }
         refreshLanguages()
+        refreshVoice()
         updateStatusView?.text = updateStatusText()
         // Back from "allow installing apps": continue the update the user started.
         if (IvolUpdater.pendingInstall && (android.os.Build.VERSION.SDK_INT < 26 ||
@@ -85,6 +88,7 @@ class IvolSettingsActivity : Activity() {
         super.onPause()
         IvolUpdater.listener = null
         IvolLanguages.listener = null
+        GigaAmVoice.settingsListener = null
     }
 
     private fun scrollToAi() {
@@ -164,6 +168,7 @@ class IvolSettingsActivity : Activity() {
                 .apply()
             seekBars.forEach { it.second() }
         })
+        buildVoice(root)
         buildLanguages(root)
         buildAi(root)
         buildUpdates(root)
@@ -257,6 +262,85 @@ class IvolSettingsActivity : Activity() {
             })
             root.addView(cardOf(b))
         }
+    }
+
+    // ---------------- Voice input model ----------------
+
+    private fun buildVoice(root: LinearLayout) {
+        root.addView(sectionTitle("Голосовой ввод"))
+        root.addView(note("Модель распознаёт речь прямо на телефоне. Выбери, какой пользоваться; " +
+            "ненужную можно удалить, чтобы не занимала место."))
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        voiceBox = box
+        root.addView(cardOf(box))
+        refreshVoice()
+    }
+
+    private var lastVoiceKey = ""
+
+    private fun refreshVoice() {
+        val box = voiceBox ?: return
+        val downloading = GigaAmVoice.downloadingId
+        val selected = GigaAmVoice.selected(this).id
+        // Progress ticks come very often: during a download rebuild only when the visible state changes.
+        val key = "$downloading:${GigaAmVoice.downloadProgress}:$selected"
+        if (downloading != null && box.childCount > 0 && key == lastVoiceKey) return
+        lastVoiceKey = key
+        box.removeAllViews()
+        for (e in GigaAmVoice.ENGINES) {
+            val installed = GigaAmVoice.isInstalled(this, e)
+            val used = GigaAmVoice.usedBytes(this, e)
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(4), 0, dp(4))
+            }
+            val radio = android.widget.RadioButton(this).apply {
+                id = View.generateViewId()
+                isChecked = e.id == selected
+                buttonTintList = android.content.res.ColorStateList.valueOf(accent)
+                setOnClickListener { GigaAmVoice.select(this@IvolSettingsActivity, e.id) }
+            }
+            row.addView(radio)
+            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            texts.addView(TextView(this).apply {
+                text = e.title
+                setTextColor(cText)
+                textSize = 16f
+            })
+            texts.addView(TextView(this).apply {
+                text = e.subtitle + " · " + when {
+                    downloading == e.id -> "скачивается ${GigaAmVoice.downloadProgress}%"
+                    installed -> "скачана, ${GigaAmVoice.mb(used)}"
+                    used > 0 -> "скачана частично (${GigaAmVoice.mb(used)} из ${GigaAmVoice.mb(e.size)})"
+                    else -> "не скачана, ${GigaAmVoice.mb(e.size)}"
+                }
+                setTextColor(sub)
+                textSize = 12f
+            })
+            texts.setOnClickListener { radio.performClick() }
+            row.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            when {
+                downloading == e.id -> {}
+                installed || used > 0 -> row.addView(smallButton("Удалить") { confirmDeleteVoice(e) }.apply {
+                    setPadding(dp(12), dp(8), 0, dp(8))
+                })
+                else -> row.addView(smallButton("Скачать") {
+                    GigaAmVoice.download(this@IvolSettingsActivity, e.id)
+                }.apply { setPadding(dp(12), dp(8), 0, dp(8)) })
+            }
+            box.addView(row)
+        }
+    }
+
+    private fun confirmDeleteVoice(e: GigaAmVoice.Engine) {
+        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Удалить ${e.title}?")
+            .setMessage("Освободится ${GigaAmVoice.mb(GigaAmVoice.usedBytes(this, e))}. " +
+                "Если снова выбрать эту модель, она скачается заново при нажатии на микрофон.")
+            .setPositiveButton("Удалить") { _, _ -> GigaAmVoice.delete(this, e.id) }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     // ---------------- Keyboard languages ----------------
