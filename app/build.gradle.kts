@@ -30,8 +30,8 @@ android {
         applicationId = "pro.ivol.keyboard"
         minSdk = 24
         targetSdk = 30
-        versionCode = 5
-        versionName = "0.3.1"
+        versionCode = 6
+        versionName = "0.4.0"
         ndk { abiFilters += listOf("arm64-v8a") }
         // Public builds ship with empty AI settings; the user fills them in the app.
         buildConfigField("String", "IVOL_AI_BASE_URL", "\"\"")
@@ -109,4 +109,6 @@ dependencies {
     implementation(files("libs/sherpa-onnx-2.0.3.aar"))
     // IVOL: Google ML Kit on-device translation RU<->EN
     implementation("com.google.mlkit:translate:17.0.3")
+    // IVOL: on-device language detection for translate (model bundled, ~1 MB)
+    implementation("com.google.mlkit:language-id:17.0.6")
 }

@@ -20,6 +20,7 @@
 <!-- IVOL: Yandex-like top bar.
      Idle:   [logo] [AI] [clipboard] [translate] [settings] ([update]) [emoji]
      Wand:   [logo] [AI*] [format] [rewrite] [translate-AI]  [emoji]
+     Langs:  [logo] [RU] [EN] [PL] [UA] ...                   [emoji]  (translate, 3+ languages)
      Typing: [logo] [ word | word | word ]                   [emoji] -->
 <merge
     xmlns:android="http://schemas.android.com/apk/res/android">
@@ -171,6 +172,19 @@
             android:hapticFeedbackEnabled="false"
             android:soundEffectsEnabled="false" />
     </LinearLayout>
+    <!-- IVOL: translate target languages (filled from code), replaces the middle icons in place.
+         Shown only when more than two languages are switched on in IVOL settings. -->
+    <LinearLayout
+        android:id="@+id/ivol_tb_lang_row"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toEndOf="@id/ivol_tb_logo"
+        android:layout_toRightOf="@id/ivol_tb_logo"
+        android:layout_toStartOf="@id/ivol_tb_emoji"
+        android:layout_toLeftOf="@id/ivol_tb_emoji"
+        android:visibility="invisible" />
     <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
          We just need to ignore the system's audio and haptic feedback settings. -->
     <LinearLayout

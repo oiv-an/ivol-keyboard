@@ -36,6 +36,7 @@ class IvolSettingsActivity : Activity() {
     private var scrollView: ScrollView? = null
     private var aiHeader: View? = null
     private var updateStatusView: TextView? = null
+    private var langsBox: LinearLayout? = null
 
     private val bg = Color.parseColor("#161C20")
     private val card = Color.parseColor("#242B30")
@@ -70,6 +71,8 @@ class IvolSettingsActivity : Activity() {
     override fun onResume() {
         super.onResume()
         IvolUpdater.listener = { s -> runOnUiThread { updateStatusView?.text = s } }
+        IvolLanguages.listener = Runnable { runOnUiThread { refreshLanguages() } }
+        refreshLanguages()
         updateStatusView?.text = updateStatusText()
         // Back from "allow installing apps": continue the update the user started.
         if (IvolUpdater.pendingInstall && (android.os.Build.VERSION.SDK_INT < 26 ||
@@ -81,6 +84,7 @@ class IvolSettingsActivity : Activity() {
     override fun onPause() {
         super.onPause()
         IvolUpdater.listener = null
+        IvolLanguages.listener = null
     }
 
     private fun scrollToAi() {
@@ -160,6 +164,7 @@ class IvolSettingsActivity : Activity() {
                 .apply()
             seekBars.forEach { it.second() }
         })
+        buildLanguages(root)
         buildAi(root)
         buildUpdates(root)
 
@@ -252,6 +257,80 @@ class IvolSettingsActivity : Activity() {
             })
             root.addView(cardOf(b))
         }
+    }
+
+    // ---------------- Keyboard languages ----------------
+
+    private fun buildLanguages(root: LinearLayout) {
+        root.addView(sectionTitle("Языки"))
+        root.addView(note("Глобус на клавиатуре переключает только включённые языки. " +
+            "Словарь подсказок для нового языка скачивается с GitHub при включении. " +
+            "Эти же языки появляются при переводе."))
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        langsBox = box
+        root.addView(cardOf(box))
+        refreshLanguages()
+    }
+
+    private fun refreshLanguages() {
+        val box = langsBox ?: return
+        box.removeAllViews()
+        val enabled = IvolLanguages.enabled(this)
+        for (loc in enabled) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(4), 0, dp(4))
+            }
+            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            texts.addView(TextView(this).apply {
+                text = IvolLanguages.displayName(loc)
+                setTextColor(cText)
+                textSize = 16f
+            })
+            texts.addView(TextView(this).apply {
+                text = IvolLanguages.status(this@IvolSettingsActivity, loc)
+                setTextColor(sub)
+                textSize = 12f
+            })
+            if (IvolLanguages.needsDownload(this, loc)) {
+                texts.setOnClickListener { IvolLanguages.download(this, loc) }
+            }
+            row.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(Switch(this).apply {
+                isChecked = true
+                isEnabled = enabled.size > 1 // at least one language stays on
+                setOnCheckedChangeListener { _, on ->
+                    if (!on) IvolLanguages.setEnabled(this@IvolSettingsActivity, loc, false)
+                }
+            })
+            box.addView(row)
+        }
+        box.addView(smallButton("+ Добавить язык") { pickLanguage() })
+    }
+
+    private fun pickLanguage() {
+        val enabled = IvolLanguages.enabled(this)
+        val ru = java.text.Collator.getInstance(java.util.Locale("ru"))
+        val locs = IvolLanguages.locales(this).filter { it !in enabled }
+            .sortedWith(compareBy(ru) { IvolLanguages.displayName(it) })
+        if (locs.isEmpty()) return
+        val labels = locs.map { loc ->
+            val d = IvolLanguages.dictFor(loc)
+            IvolLanguages.displayName(loc) + when {
+                IvolLanguages.hasBuiltInDict(loc) -> ""
+                d != null -> "  · " + IvolLanguages.mb(d.size)
+                else -> "  · без подсказок"
+            }
+        }.toTypedArray()
+        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Добавить язык")
+            .setItems(labels) { d, which ->
+                IvolLanguages.setEnabled(this, locs[which], true)
+                d.dismiss()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     // ---------------- Updates from GitHub Releases ----------------

@@ -64,6 +64,7 @@ final public class BinaryDictionaryGetter {
 
     // The key considered to read the version attribute in a dictionary file.
     private static String VERSION_KEY = "version";
+    private static final boolean IVOL_ACCEPT_ALL_VERSIONS = true;
 
     // Prevents this from being instantiated
     private BinaryDictionaryGetter() {}
@@ -199,7 +200,10 @@ final public class BinaryDictionaryGetter {
     // those do not include allowlist entries, the new code with an old version of the dictionary
     // would lose allowlist functionality.
     private static boolean hackCanUseDictionaryFile(final File file) {
-        if (!SHOULD_USE_DICT_VERSION) {
+        // IVOL: the only files in the cache are dictionaries downloaded from our GitHub release
+        // and verified by SHA-256 (ivol/IvolLanguages.kt). Some good AOSP word lists (be, hi,
+        // ta, te...) have a header version below 18 - don't reject them.
+        if (!SHOULD_USE_DICT_VERSION || IVOL_ACCEPT_ALL_VERSIONS) {
             return true;
         }
 

@@ -938,6 +938,13 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     void onStartInputInternal(final EditorInfo editorInfo, final boolean restarting) {
         super.onStartInput(editorInfo, restarting);
 
+        // IVOL: the current language was switched off in IVOL settings -> go to an enabled one.
+        final InputMethodSubtype ivolFallback = ivolFallbackSubtypeIfCurrentDisabled();
+        if (ivolFallback != null) {
+            mHandler.postSwitchLanguage(ivolFallback);
+            return;
+        }
+
         // If the primary hint language does not match the current subtype language, then try
         // to switch to the primary hint language.
         // TODO: Support all the locales in EditorInfo#hintLocales.
@@ -946,7 +953,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return;
         }
         final InputMethodSubtype newSubtype = mRichImm.findSubtypeByLocale(primaryHintLocale);
-        if (newSubtype == null || newSubtype.equals(mRichImm.getCurrentSubtype().getRawSubtype())) {
+        // IVOL: follow the field's language hint only to a language the user switched on.
+        if (newSubtype == null || !com.android.inputmethod.latin.ivol.IvolLanguages.isEnabled(
+                this, newSubtype.getLocale())) {
+            return;
+        }
+        if (newSubtype.equals(mRichImm.getCurrentSubtype().getRawSubtype())) {
             return;
         }
         mHandler.postSwitchLanguage(newSubtype);
@@ -1501,8 +1513,24 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         mRichImm.setInputMethodAndSubtype(token, subtype);
     }
 
-    // IVOL: the globe key toggles between our own RU and EN subtypes only,
-    // regardless of which subtypes are enabled in system settings.
+    private InputMethodSubtype ivolFallbackSubtypeIfCurrentDisabled() {
+        final InputMethodSubtype current = mRichImm.getCurrentSubtype().getRawSubtype();
+        if (current == null || com.android.inputmethod.latin.ivol.IvolLanguages.isEnabled(
+                this, current.getLocale())) {
+            return null;
+        }
+        final android.view.inputmethod.InputMethodInfo imi = mRichImm.getInputMethodInfoOfThisIme();
+        for (int i = 0; i < imi.getSubtypeCount(); i++) {
+            final InputMethodSubtype st = imi.getSubtypeAt(i);
+            if (com.android.inputmethod.latin.ivol.IvolLanguages.isEnabled(this, st.getLocale())) {
+                return st;
+            }
+        }
+        return null;
+    }
+
+    // IVOL: the globe key cycles through the languages switched on in IVOL settings
+    // (ivol/IvolLanguages.kt, default RU + EN), regardless of the system subtype settings.
     public void switchToNextSubtype() {
         final IBinder token = getWindow().getWindow().getAttributes().token;
         final android.view.inputmethod.InputMethodInfo imi = mRichImm.getInputMethodInfoOfThisIme();
@@ -1512,7 +1540,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         for (int i = 0; i < imi.getSubtypeCount(); i++) {
             final InputMethodSubtype st = imi.getSubtypeAt(i);
             final String locale = st.getLocale();
-            if (locale.startsWith("ru") || locale.startsWith("en")) ours.add(st);
+            if (com.android.inputmethod.latin.ivol.IvolLanguages.isEnabled(this, locale)) ours.add(st);
         }
         final int count = ours.size();
         if (count < 2) return;

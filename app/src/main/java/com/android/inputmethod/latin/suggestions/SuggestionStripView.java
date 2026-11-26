@@ -73,6 +73,9 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
     private final View mAiRow;
     private View mUpdateButton;
     private boolean mAiMode;
+    // IVOL: translate target languages row (3+ languages switched on).
+    private final android.widget.LinearLayout mLangRow;
+    private boolean mLangMode;
     private final View mImportantNoticeStrip;
     MainKeyboardView mMainKeyboardView;
 
@@ -152,6 +155,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mVoiceKey = (ImageButton)findViewById(R.id.suggestions_strip_voice_key);
         mToolbarMiddle = findViewById(R.id.ivol_tb_middle);
         mAiRow = findViewById(R.id.ivol_tb_ai_row);
+        mLangRow = (android.widget.LinearLayout)findViewById(R.id.ivol_tb_lang_row);
         for (final int id : new int[] { R.id.ivol_tb_logo, R.id.ivol_tb_emoji, R.id.ivol_tb_ai,
                 R.id.ivol_tb_clipboard, R.id.ivol_tb_translate, R.id.ivol_tb_settings,
                 R.id.ivol_tb_ai_back, R.id.ivol_tb_ai_format, R.id.ivol_tb_ai_rewrite,
@@ -245,8 +249,10 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             return;
         }
         mAiMode = false;
+        mLangMode = false;
         mToolbarMiddle.setVisibility(INVISIBLE);
         mAiRow.setVisibility(INVISIBLE);
+        mLangRow.setVisibility(INVISIBLE);
         mStartIndexOfMoreSuggestions = mLayoutHelper.layoutAndReturnStartIndexOfMoreSuggestions(
                 getContext(), mSuggestedWords, mSuggestionsStrip, this);
         mStripVisibilityGroup.showSuggestionsStrip();
@@ -260,13 +266,61 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
 
     private void showToolbar() {
         mStripVisibilityGroup.hideAll();
-        mToolbarMiddle.setVisibility(mAiMode ? INVISIBLE : VISIBLE);
+        mToolbarMiddle.setVisibility(mAiMode || mLangMode ? INVISIBLE : VISIBLE);
         mAiRow.setVisibility(mAiMode ? VISIBLE : INVISIBLE);
+        mLangRow.setVisibility(mLangMode ? VISIBLE : INVISIBLE);
     }
 
     /** IVOL: switch the middle of the bar between the normal icons and the wand actions. */
     private void setAiMode(final boolean on) {
         mAiMode = on;
+        mLangMode = false;
+        showToolbar();
+    }
+
+    /** IVOL: show the translate languages (enabled keyboard languages) in the bar. */
+    private void showLanguages(final com.android.inputmethod.latin.LatinIME ime) {
+        mLangRow.removeAllViews();
+        final android.content.Context ctx = getContext();
+        final float density = getResources().getDisplayMetrics().density;
+        // Back to the normal icons.
+        final android.widget.ImageButton back = new android.widget.ImageButton(ctx);
+        back.setImageResource(R.drawable.ivol_ic_translate);
+        back.setColorFilter(0xFFC1E8FF);
+        back.setBackgroundResource(R.drawable.ivol_toolbar_button_bg);
+        back.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        back.setContentDescription("Back");
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(final View v) {
+                mLangMode = false;
+                showToolbar();
+            }
+        });
+        mLangRow.addView(back, new android.widget.LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        for (final String code : com.android.inputmethod.latin.ivol.IvolTranslator.targets(ctx)) {
+            final TextView t = new TextView(ctx);
+            t.setText(com.android.inputmethod.latin.ivol.IvolTranslator.label(code));
+            t.setTextColor(0xFFDCE3E9);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            t.setGravity(android.view.Gravity.CENTER);
+            t.setBackgroundResource(R.drawable.ivol_toolbar_button_bg);
+            t.setPadding((int)(4 * density), 0, (int)(4 * density), 0);
+            t.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(final View v) {
+                    mLangMode = false;
+                    showToolbar();
+                    com.android.inputmethod.latin.ivol.IvolTranslator.translateTo(ime, code);
+                }
+            });
+            mLangRow.addView(t, new android.widget.LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        }
+        mAiMode = false;
+        mLangMode = true;
         showToolbar();
     }
 
@@ -596,8 +650,8 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         if (id == R.id.ivol_tb_translate) {
             final com.android.inputmethod.latin.LatinIME ime =
                     com.android.inputmethod.latin.ivol.ClipboardHistory.getIme();
-            if (ime != null) {
-                com.android.inputmethod.latin.ivol.IvolTranslator.onButton(ime);
+            if (ime != null && com.android.inputmethod.latin.ivol.IvolTranslator.onButton(ime)) {
+                showLanguages(ime);
             }
             return;
         }
@@ -605,6 +659,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             // IVOL: the logo always brings back the tool icons (wand, clipboard...), even while
             // word suggestions are shown, e.g. after dictating.
             mAiMode = false;
+            mLangMode = false;
             showToolbar();
             return;
         }
