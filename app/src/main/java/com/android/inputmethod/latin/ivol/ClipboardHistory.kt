@@ -28,8 +28,11 @@ object ClipboardHistory {
     }
 
     // IVOL: "fresh" clip (Yandex-like): copied a moment ago and not pasted yet -> the clipboard
-    // button lights up and one tap pastes it right away.
-    private const val FRESH_MS = 5 * 60 * 1000L
+    // button lights up and one tap pastes it right away. Only for the copy -> switch app -> paste
+    // moment, then the button goes dark by itself even while the keyboard stays open.
+    private const val FRESH_MS = 30 * 1000L
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val expire = Runnable { hasFresh() }
     private const val KEY_CONSUMED = "consumed"
     private const val KEY_CONSUMED_TS = "consumed_ts"
     @JvmStatic var freshText: String? = null
@@ -100,7 +103,12 @@ object ClipboardHistory {
         val changed = text != freshText
         freshText = text
         freshAt = at
-        if (changed) onFreshChanged?.run()
+        main.removeCallbacks(expire)
+        if (text != null) {
+            val left = at + FRESH_MS - System.currentTimeMillis()
+            main.postDelayed(expire, left.coerceAtLeast(0L) + 50L)
+        }
+        if (changed) main.post { onFreshChanged?.run() }
     }
 
     @JvmStatic fun init(service: com.android.inputmethod.latin.LatinIME) {
