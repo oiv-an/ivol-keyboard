@@ -36,6 +36,7 @@ class IvolSettingsActivity : Activity() {
     private var scrollView: ScrollView? = null
     private var aiHeader: View? = null
     private var updateStatusView: TextView? = null
+    private var updatesHeader: View? = null
     private var langsBox: LinearLayout? = null
     private var voiceBox: LinearLayout? = null
 
@@ -65,8 +66,16 @@ class IvolSettingsActivity : Activity() {
 
     private fun handleIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_SCROLL_TO_AI, false) == true) scrollToAi()
-        // Came from the update notification: install the already downloaded APK right away.
-        if (intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true) IvolUpdater.checkNow(this)
+        // Came from the update icon: show the update block and start installing right away.
+        if (intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true) {
+            scrollToUpdates()
+            IvolUpdater.checkNow(this)
+        }
+    }
+
+    private fun scrollToUpdates() {
+        val sv = scrollView ?: return
+        sv.post { updatesHeader?.let { sv.smoothScrollTo(0, it.top) } }
     }
 
     override fun onResume() {
@@ -108,6 +117,11 @@ class IvolSettingsActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             setPadding(0, 0, 0, dp(16))
         })
+
+        // A newer version is known (or we came from the update icon): updates block goes first.
+        val updatesFirst = IvolUpdater.availableVersion(this) != null ||
+            intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true
+        if (updatesFirst) buildUpdates(root)
 
         // Preview field: keeps our keyboard open, it rebuilds live while sliders move.
         val preview = EditText(this).apply {
@@ -171,7 +185,7 @@ class IvolSettingsActivity : Activity() {
         buildVoice(root)
         buildLanguages(root)
         buildAi(root)
-        buildUpdates(root)
+        if (!updatesFirst) buildUpdates(root)
 
         root.addView(button("Расширенные настройки", false) {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -427,7 +441,7 @@ class IvolSettingsActivity : Activity() {
     }
 
     private fun buildUpdates(root: LinearLayout) {
-        root.addView(sectionTitle("Обновления"))
+        root.addView(sectionTitle("Обновления").also { updatesHeader = it })
         root.addView(note("Раз в день, пока ты печатаешь, клавиатура смотрит релизы на GitHub " +
             "(${IvolUpdater.REPO}). Если вышла новая версия, справа на панели появится значок " +
             "обновления. Обновление ставится только по нажатию, настройки и словарь сохраняются."))

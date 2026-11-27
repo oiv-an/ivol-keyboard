@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- IVOL: wand action "format" (spelling, punctuation): text lines + check mark -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="28dp" android:height="28dp"
+    android:width="22dp" android:height="22dp"
     android:viewportWidth="24" android:viewportHeight="24">
     <path android:pathData="M3,6h14" android:fillColor="#00000000" android:strokeColor="#DCE3E9" android:strokeWidth="1.6" android:strokeLineCap="round" />
     <path android:pathData="M3,11h14" android:fillColor="#00000000" android:strokeColor="#DCE3E9" android:strokeWidth="1.6" android:strokeLineCap="round" />
