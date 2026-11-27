@@ -37,6 +37,8 @@ class IvolSettingsActivity : Activity() {
     private var aiHeader: View? = null
     private var updateStatusView: TextView? = null
     private var updatesHeader: View? = null
+    private var updatesOpen: (() -> Unit)? = null
+    private var aiOpen: (() -> Unit)? = null
     private var langsBox: LinearLayout? = null
     private var voiceBox: LinearLayout? = null
 
@@ -74,6 +76,7 @@ class IvolSettingsActivity : Activity() {
     }
 
     private fun scrollToUpdates() {
+        updatesOpen?.invoke()
         val sv = scrollView ?: return
         sv.post { updatesHeader?.let { sv.smoothScrollTo(0, it.top) } }
     }
@@ -101,8 +104,45 @@ class IvolSettingsActivity : Activity() {
     }
 
     private fun scrollToAi() {
+        aiOpen?.invoke()
         val sv = scrollView ?: return
         sv.post { aiHeader?.let { sv.smoothScrollTo(0, it.top) } }
+    }
+
+    // ---------------- Accordion: tap a header to open / close its block ----------------
+
+    private class Section(val header: View, val body: LinearLayout, val open: () -> Unit)
+
+    private fun section(
+        root: LinearLayout, title: String, open: Boolean = false, onOpen: (() -> Unit)? = null,
+    ): Section {
+        val arrow = TextView(this).apply { setTextColor(accent); textSize = 16f }
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(TextView(this@IvolSettingsActivity).apply {
+                text = title
+                setTextColor(cText)
+                textSize = 17f
+                typeface = Typeface.DEFAULT_BOLD
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(arrow)
+        }
+        cardOf(header)
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(6), 0, dp(6), dp(10))
+        }
+        fun set(o: Boolean) {
+            body.visibility = if (o) View.VISIBLE else View.GONE
+            arrow.text = if (o) "▲" else "▼"
+            if (o) onOpen?.invoke()
+        }
+        header.setOnClickListener { set(body.visibility != View.VISIBLE) }
+        set(open)
+        root.addView(header)
+        root.addView(body)
+        return Section(header, body) { if (body.visibility != View.VISIBLE) set(true) }
     }
 
     private fun build(): View {
@@ -118,10 +158,10 @@ class IvolSettingsActivity : Activity() {
             setPadding(0, 0, 0, dp(16))
         })
 
-        // A newer version is known (or we came from the update icon): updates block goes first.
+        // A newer version is known (or we came from the update icon): updates block goes first, open.
         val updatesFirst = IvolUpdater.availableVersion(this) != null ||
             intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true
-        if (updatesFirst) buildUpdates(root)
+        if (updatesFirst) buildUpdates(root, true)
 
         // Preview field: keeps our keyboard open, it rebuilds live while sliders move.
         val preview = EditText(this).apply {
@@ -131,20 +171,27 @@ class IvolSettingsActivity : Activity() {
             textSize = 16f
             isSingleLine = true
         }
-        root.addView(cardOf(preview))
-        preview.requestFocus()
+        val look = section(root, "Внешний вид и вибрация") {
+            // Opening the block shows the keyboard so the sliders can be seen in action.
+            preview.post {
+                preview.requestFocus()
+                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                    ?.showSoftInput(preview, 0)
+            }
+        }.body
+        look.addView(cardOf(preview))
 
         val p = IvolPrefs.prefs(this)
-        root.addView(slider("Высота клавиатуры", IvolPrefs.KEY_HEIGHT, 80, 130,
+        look.addView(slider("Высота клавиатуры", IvolPrefs.KEY_HEIGHT, 80, 130,
             p.getInt(IvolPrefs.KEY_HEIGHT, IvolPrefs.HEIGHT_DEFAULT), IvolPrefs.HEIGHT_DEFAULT) { "$it%" })
-        root.addView(slider("Ширина клавиш", IvolPrefs.KEY_WIDTH, 0, 100,
+        look.addView(slider("Ширина клавиш", IvolPrefs.KEY_WIDTH, 0, 100,
             p.getInt(IvolPrefs.KEY_WIDTH, IvolPrefs.WIDTH_DEFAULT), IvolPrefs.WIDTH_DEFAULT) { "$it" })
-        root.addView(slider("Скругление углов", IvolPrefs.KEY_CORNER, 0, 16,
+        look.addView(slider("Скругление углов", IvolPrefs.KEY_CORNER, 0, 16,
             p.getInt(IvolPrefs.KEY_CORNER, IvolPrefs.CORNER_DEFAULT), IvolPrefs.CORNER_DEFAULT) { "$it dp" })
 
         // Vibration: AOSP preference, read by SettingsValues.
         val dprefs = PreferenceManager.getDefaultSharedPreferences(this)
-        root.addView(cardOf(LinearLayout(this).apply {
+        look.addView(cardOf(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(TextView(this@IvolSettingsActivity).apply {
@@ -159,21 +206,21 @@ class IvolSettingsActivity : Activity() {
                 }
             })
         }))
-        root.addView(slider("Сила вибрации", IvolPrefs.KEY_VIBRO, 1, 100,
+        look.addView(slider("Сила вибрации", IvolPrefs.KEY_VIBRO, 1, 100,
             p.getInt(IvolPrefs.KEY_VIBRO, IvolPrefs.VIBRO_DEFAULT), IvolPrefs.VIBRO_DEFAULT,
             onStop = {
                 // Let the user feel the new strength right away.
                 IvolPrefs.vibrate(getSystemService(VIBRATOR_SERVICE) as? android.os.Vibrator)
             }) { "$it%" })
 
-        root.addView(TextView(this).apply {
+        look.addView(TextView(this).apply {
             setText("Клавиатура внизу меняется сразу, пока двигаешь ползунки.")
             setTextColor(sub)
             textSize = 13f
             setPadding(dp(4), dp(8), dp(4), dp(16))
         })
 
-        root.addView(button("Сбросить", false) {
+        look.addView(button("Сбросить", false) {
             p.edit()
                 .putInt(IvolPrefs.KEY_HEIGHT, IvolPrefs.HEIGHT_DEFAULT)
                 .putInt(IvolPrefs.KEY_WIDTH, IvolPrefs.WIDTH_DEFAULT)
@@ -185,7 +232,7 @@ class IvolSettingsActivity : Activity() {
         buildVoice(root)
         buildLanguages(root)
         buildAi(root)
-        if (!updatesFirst) buildUpdates(root)
+        if (!updatesFirst) buildUpdates(root, false)
 
         root.addView(button("Расширенные настройки", false) {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -205,10 +252,10 @@ class IvolSettingsActivity : Activity() {
     private fun buildAi(root: LinearLayout) {
         val ap = IvolAiPrefs.prefs(this)
 
-        val header = sectionTitle("Подключение модели")
-        aiHeader = header
-        root.addView(header)
-        root.addView(note("Свой сервер в формате OpenAI. Им пользуется волшебная палочка " +
+        val conn = section(root, "Подключение модели")
+        aiHeader = conn.header
+        aiOpen = conn.open
+        conn.body.addView(note("Свой сервер в формате OpenAI. Им пользуется волшебная палочка " +
             "на панели клавиатуры. Ключ хранится только на телефоне."))
 
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -251,10 +298,10 @@ class IvolSettingsActivity : Activity() {
         }
         box.addView(reasoningView)
         box.addView(note("Если модель не поддерживает размышления, оставь «не отправлять».", 0))
-        root.addView(cardOf(box))
+        conn.body.addView(cardOf(box))
 
-        root.addView(sectionTitle("Кнопки волшебной палочки"))
-        root.addView(note("У каждой кнопки свой промт: что модель делает с текстом. " +
+        val wand = section(root, "Кнопки волшебной палочки").body
+        wand.addView(note("У каждой кнопки свой промт: что модель делает с текстом. " +
             "Меняй под себя. Пустое поле — промт по умолчанию."))
         for (action in IvolAiPrefs.ACTIONS) {
             val b = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -274,19 +321,19 @@ class IvolSettingsActivity : Activity() {
                 ap.edit().remove(action.promptKey).apply()
                 promptField.setText(action.defaultPrompt)
             })
-            root.addView(cardOf(b))
+            wand.addView(cardOf(b))
         }
     }
 
     // ---------------- Voice input model ----------------
 
     private fun buildVoice(root: LinearLayout) {
-        root.addView(sectionTitle("Голосовой ввод"))
-        root.addView(note("Модель распознаёт речь прямо на телефоне. Выбери, какой пользоваться; " +
+        val body = section(root, "Голосовой ввод").body
+        body.addView(note("Модель распознаёт речь прямо на телефоне. Выбери, какой пользоваться; " +
             "ненужную можно удалить, чтобы не занимала место."))
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         voiceBox = box
-        root.addView(cardOf(box))
+        body.addView(cardOf(box))
         refreshVoice()
     }
 
@@ -360,13 +407,13 @@ class IvolSettingsActivity : Activity() {
     // ---------------- Keyboard languages ----------------
 
     private fun buildLanguages(root: LinearLayout) {
-        root.addView(sectionTitle("Языки"))
-        root.addView(note("Глобус на клавиатуре переключает только включённые языки. " +
+        val body = section(root, "Языки").body
+        body.addView(note("Глобус на клавиатуре переключает только включённые языки. " +
             "Словарь подсказок для нового языка скачивается с GitHub при включении. " +
             "Эти же языки появляются при переводе."))
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         langsBox = box
-        root.addView(cardOf(box))
+        body.addView(cardOf(box))
         refreshLanguages()
     }
 
@@ -440,9 +487,12 @@ class IvolSettingsActivity : Activity() {
         return "Установлена версия " + IvolUpdater.currentVersion()
     }
 
-    private fun buildUpdates(root: LinearLayout) {
-        root.addView(sectionTitle("Обновления").also { updatesHeader = it })
-        root.addView(note("Раз в день, пока ты печатаешь, клавиатура смотрит релизы на GitHub " +
+    private fun buildUpdates(root: LinearLayout, open: Boolean) {
+        val s = section(root, "Обновления", open)
+        updatesHeader = s.header
+        updatesOpen = s.open
+        val body = s.body
+        body.addView(note("Раз в день, пока ты печатаешь, клавиатура смотрит релизы на GitHub " +
             "(${IvolUpdater.REPO}). Если вышла новая версия, справа на панели появится значок " +
             "обновления. Обновление ставится только по нажатию, настройки и словарь сохраняются."))
 
@@ -471,7 +521,7 @@ class IvolSettingsActivity : Activity() {
         updateStatusView = status
         box.addView(status)
         box.addView(smallButton("Проверить и обновить") { IvolUpdater.checkNow(this) })
-        root.addView(cardOf(box))
+        body.addView(cardOf(box))
     }
 
     private fun pickModel(target: EditText) {
@@ -501,14 +551,6 @@ class IvolSettingsActivity : Activity() {
                     .show()
             }
         }.start()
-    }
-
-    private fun sectionTitle(t: String): View = TextView(this).apply {
-        text = t
-        setTextColor(cText)
-        textSize = 19f
-        typeface = Typeface.DEFAULT_BOLD
-        setPadding(dp(4), dp(18), dp(4), dp(4))
     }
 
     private fun note(t: String, bottom: Int = 10): View = TextView(this).apply {
