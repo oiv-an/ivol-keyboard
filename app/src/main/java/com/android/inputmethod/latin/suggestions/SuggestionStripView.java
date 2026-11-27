@@ -72,6 +72,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
     // IVOL: magic-wand row shown in place of the middle icons.
     private final View mAiRow;
     private View mUpdateButton;
+    private ImageButton mClipButton;
     private boolean mAiMode;
     // IVOL: translate target languages row (3+ languages switched on).
     private final android.widget.LinearLayout mLangRow;
@@ -162,6 +163,23 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
                 R.id.ivol_tb_ai_translate, R.id.ivol_tb_update }) {
             findViewById(id).setOnClickListener(this);
         }
+        // IVOL: clipboard button lights up when something was just copied; tap = paste it,
+        // long press = history panel.
+        mClipButton = (ImageButton)findViewById(R.id.ivol_tb_clipboard);
+        mClipButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(final View v) {
+                com.android.inputmethod.latin.ivol.ClipboardPanelView.toggleCurrent();
+                return true;
+            }
+        });
+        com.android.inputmethod.latin.ivol.ClipboardHistory.setOnFreshChanged(new Runnable() {
+            @Override
+            public void run() {
+                refreshClipButton();
+            }
+        });
+        refreshClipButton();
         // IVOL: update icon on the right of the bar appears when GitHub has a newer release.
         mUpdateButton = findViewById(R.id.ivol_tb_update);
         com.android.inputmethod.latin.ivol.IvolUpdater.setOnAvailableChanged(new Runnable() {
@@ -256,6 +274,19 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mStartIndexOfMoreSuggestions = mLayoutHelper.layoutAndReturnStartIndexOfMoreSuggestions(
                 getContext(), mSuggestedWords, mSuggestionsStrip, this);
         mStripVisibilityGroup.showSuggestionsStrip();
+    }
+
+    /** IVOL: lit clipboard button = a fresh copy is waiting to be pasted. */
+    public void refreshClipButton() {
+        final boolean fresh = com.android.inputmethod.latin.ivol.ClipboardHistory.hasFresh();
+        mClipButton.setBackgroundResource(fresh ? R.drawable.ivol_toolbar_button_fresh_bg
+                : R.drawable.ivol_toolbar_button_bg);
+        if (fresh) {
+            mClipButton.setColorFilter(0xFF161C20);
+        } else {
+            mClipButton.clearColorFilter();
+        }
+        mClipButton.setContentDescription(fresh ? "Paste" : "Clipboard");
     }
 
     private void refreshUpdateButton() {
@@ -604,7 +635,12 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         }
         final int id = view.getId();
         if (id == R.id.ivol_tb_clipboard) {
-            com.android.inputmethod.latin.ivol.ClipboardPanelView.toggleCurrent();
+            // IVOL: lit button (fresh copy) pastes at once; otherwise the history panel.
+            if (com.android.inputmethod.latin.ivol.ClipboardHistory.pasteFresh()) {
+                com.android.inputmethod.latin.ivol.ClipboardPanelView.hideCurrent();
+            } else {
+                com.android.inputmethod.latin.ivol.ClipboardPanelView.toggleCurrent();
+            }
             return;
         }
         // IVOL: magic wand — the three actions appear right in this bar.

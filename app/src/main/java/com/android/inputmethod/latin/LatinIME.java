@@ -967,6 +967,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     @SuppressWarnings("deprecation")
     void onStartInputViewInternal(final EditorInfo editorInfo, final boolean restarting) {
         super.onStartInputView(editorInfo, restarting);
+        // IVOL: light up the clipboard button if something was copied a moment ago.
+        com.android.inputmethod.latin.ivol.ClipboardHistory.checkFresh();
 
         mDictionaryFacilitator.onStartInput();
         // Switch to the null consumer to handle cases leading to early exit below, for which we
