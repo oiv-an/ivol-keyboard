@@ -30,7 +30,7 @@ object ClipboardHistory {
     // IVOL: "fresh" clip (Yandex-like): copied a moment ago and not pasted yet -> the clipboard
     // button lights up and one tap pastes it right away. Only for the copy -> switch app -> paste
     // moment, then the button goes dark by itself even while the keyboard stays open.
-    private const val FRESH_MS = 30 * 1000L
+    private const val FRESH_MS = 15 * 1000L
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val expire = Runnable { hasFresh() }
     private const val KEY_CONSUMED = "consumed"
